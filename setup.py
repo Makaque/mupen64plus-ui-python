@@ -304,6 +304,42 @@ class BuildExe(setuptools.Command):
         self.run_build_installer()
 
 
+class BuildQtPortable(BuildQt):
+
+    description = "Build the portable QT interface"
+
+    @staticmethod
+    def set_config_path():
+        core_file = ""
+        core_path = os.path.join(BASE_DIR, "src", "m64py", "core", "core.py")
+        with open(core_path, "r") as core:
+            data = core.read()
+        lines = data.split("\n")
+        for line in lines:
+            if "C.c_int(CORE_API_VERSION)" in line:
+                line = line.replace("None", "C.c_char_p(os.getcwd().encode())")
+            core_file += line + "\n"
+        with open(core_path, "w") as core:
+            core.write(core_file)
+
+        settings_file = ""
+        settings_path = os.path.join(BASE_DIR, "src", "m64py", "frontend", "settings.py")
+        with open(settings_path, "r") as core:
+            data = core.read()
+        lines = data.split("\n")
+        for line in lines:
+            if "QSettings(" in line:
+                line = line.replace("QSettings(\"m64py\", \"m64py\")",
+                                    "QSettings(os.path.join(os.getcwd(), \"m64py.ini\"), QSettings.IniFormat)")
+            settings_file += line + "\n"
+        with open(settings_path, "w") as core:
+            core.write(settings_file)
+
+    def run(self):
+        self.run_command("build_qt")
+        set_rthook()
+        self.set_config_path()
+
 class BuildZip(BuildExe):
 
     description = "Generate a .zip file for distribution"
@@ -398,6 +434,11 @@ class MyBuild(distutils_build.build):
         self.run_command("build_qt")
         distutils_build.build.run(self)
 
+class MyBuildPortable(distutils_build.build):
+    def run(self):
+        self.run_command("build_qt_portable")
+        distutils_build.build.run(self)
+
 
 class MyClean(distutils_clean.clean):
     def run(self):
@@ -421,9 +462,11 @@ setuptools.setup(
     platforms=["Linux", "Windows", "Darwin"],
     cmdclass={
         'build': MyBuild,
+        'build_portable': MyBuildPortable,
         'build_dmg': BuildDmg,
         'build_exe': BuildExe,
         'build_qt': BuildQt,
+        'build_qt_portable': BuildQtPortable,
         'build_zip': BuildZip,
         'clean': MyClean,
         'clean_local': CleanLocal
