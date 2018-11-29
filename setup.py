@@ -303,11 +303,7 @@ class BuildExe(setuptools.Command):
         self.remove_files()
         self.run_build_installer()
 
-
-class BuildQtPortable(BuildQt):
-
-    description = "Build the portable QT interface"
-
+class Portable(object):
     @staticmethod
     def set_config_path():
         core_file = ""
@@ -335,10 +331,15 @@ class BuildQtPortable(BuildQt):
         with open(settings_path, "w") as core:
             core.write(settings_file)
 
+
+class BuildQtPortable(BuildQt):
+
+    description = "Build the portable QT interface"
+
     def run(self):
         self.run_command("build_qt")
         set_rthook()
-        self.set_config_path()
+        Portable.set_config_path()
 
 class BuildZip(BuildExe):
 
@@ -353,37 +354,10 @@ class BuildZip(BuildExe):
                             self.dist_dir, "m64py-{}".format(FRONTEND_VERSION),
                             True)
 
-    @staticmethod
-    def set_config_path():
-        core_file = ""
-        core_path = os.path.join(BASE_DIR, "src", "m64py", "core", "core.py")
-        with open(core_path, "r") as core:
-            data = core.read()
-        lines = data.split("\n")
-        for line in lines:
-            if "C.c_int(CORE_API_VERSION)" in line:
-                line = line.replace("None", "C.c_char_p(os.getcwd().encode())")
-            core_file += line + "\n"
-        with open(core_path, "w") as core:
-            core.write(core_file)
-
-        settings_file = ""
-        settings_path = os.path.join(BASE_DIR, "src", "m64py", "frontend", "settings.py")
-        with open(settings_path, "r") as core:
-            data = core.read()
-        lines = data.split("\n")
-        for line in lines:
-            if "QSettings(" in line:
-                line = line.replace("QSettings(\"m64py\", \"m64py\")",
-                                    "QSettings(os.path.join(os.getcwd(), \"m64py.ini\"), QSettings.IniFormat)")
-            settings_file += line + "\n"
-        with open(settings_path, "w") as core:
-            core.write(settings_file)
-
     def run(self):
         self.run_command("build_qt")
         set_rthook()
-        self.set_config_path()
+        Portable.set_config_path()
         self.run_build()
         self.copy_emulator()
         self.move_files()
